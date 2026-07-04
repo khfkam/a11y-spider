@@ -1,0 +1,43 @@
+{
+  "name": "a11y-spider",
+  "version": "0.1.0",
+  "description": "Batch accessibility URL scanner with axe-core regression tracking",
+  "type": "module",
+  "engines": {
+    "node": "24.14.1"
+  },
+  "bin": {
+    "a11y-spider": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "a11y-spider": "node dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "playwright install chromium"
+  },
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "axe-core",
+    "playwright",
+    "wcag"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "axe-core": "4.12.1",
+    "commander": "15.0.0",
+    "dotenv": "17.4.2",
+    "playwright": "1.61.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.14",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.9"
+  }
+}

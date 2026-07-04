@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>a11y-spider Report — scan_2026-07-03T120000Z</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-2: #243044;
+      --border: #2d3a4f;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --new: #f85149;
+      --resolved: #3fb950;
+      --legacy: #8b949e;
+      --failed: #d29922;
+      --link: #58a6ff;
+      --critical: #ff7b72;
+      --serious: #ffa657;
+      --moderate: #e3b341;
+      --font: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "SF Mono", "Fira Code", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a2332 0%, #0f1419 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+    }
+
+    .header-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .logo span { color: var(--muted); font-weight: 400; }
+
+    .meta {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .meta strong { color: var(--text); }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.875rem 1rem;
+    }
+
+    .stat-label {
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .stat--new .stat-value { color: var(--new); }
+    .stat--resolved .stat-value { color: var(--resolved); }
+    .stat--legacy .stat-value { color: var(--legacy); }
+    .stat--failed .stat-value { color: var(--failed); }
+    .stat--level .stat-value { font-size: 1.25rem; }
+
+    .verdict {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      background: rgba(248, 81, 73, 0.12);
+      border: 1px solid rgba(248, 81, 73, 0.35);
+      color: #ffaba8;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem 3rem;
+    }
+
+    .section {
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.875rem 1.25rem;
+      background: var(--surface-2);
+      cursor: pointer;
+      user-select: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      color: inherit;
+      font: inherit;
+    }
+
+    .section-header:hover { background: #2a384f; }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      font-weight: 600;
+      font-size: 0.9375rem;
+    }
+
+    .badge {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge--new { background: rgba(248, 81, 73, 0.2); color: var(--new); }
+    .badge--resolved { background: rgba(63, 185, 80, 0.2); color: var(--resolved); }
+    .badge--legacy { background: rgba(139, 148, 158, 0.2); color: var(--legacy); }
+    .badge--failed { background: rgba(210, 153, 34, 0.2); color: var(--failed); }
+
+    .chevron {
+      color: var(--muted);
+      transition: transform 0.2s;
+      font-size: 0.75rem;
+    }
+
+    .section.collapsed .chevron { transform: rotate(-90deg); }
+    .section.collapsed .section-body { display: none; }
+
+    .section-body { padding: 0.5rem 0; }
+
+    .violation {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .violation:last-child { border-bottom: none; }
+
+    .violation-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .rule-id {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--link);
+    }
+
+    .impact {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.125rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .impact--serious { background: rgba(255, 166, 87, 0.2); color: var(--serious); }
+    .impact--moderate { background: rgba(227, 179, 65, 0.2); color: var(--moderate); }
+
+    .page-url {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      margin-bottom: 0.625rem;
+      word-break: break-all;
+    }
+
+    .page-url a { color: var(--link); text-decoration: none; }
+    .page-url a:hover { text-decoration: underline; }
+
+    .detail-grid {
+      display: grid;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+    }
+
+    .detail-row {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 0.75rem;
+    }
+
+    .detail-label {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      background: var(--bg);
+      padding: 0.375rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      word-break: break-all;
+    }
+
+    .detail-value--prose {
+      font-family: var(--font);
+      font-size: 0.8125rem;
+      line-height: 1.45;
+    }
+
+    .help-link {
+      display: inline-block;
+      margin-top: 0.625rem;
+      font-size: 0.8125rem;
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .help-link:hover { text-decoration: underline; }
+
+    .failed-url {
+      padding: 0.875rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .failed-url:last-child { border-bottom: none; }
+
+    .error-code {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--failed);
+      background: rgba(210, 153, 34, 0.12);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+
+    .screenshot-placeholder {
+      margin-top: 0.75rem;
+      padding: 2rem;
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-top">
+      <div class="logo">a11y-spider <span>accessibility report</span></div>
+      <div class="meta">
+        <div><strong>Run:</strong> scan_2026-07-03T120000Z</div>
+        <div><strong>Baseline:</strong> golden-baseline.json</div>
+        <div><strong>Scanned:</strong> 22 URLs · 3m 42s</div>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="stat stat--level">
+        <div class="stat-label">WCAG level</div>
+        <div class="stat-value">2.2 AA</div>
+      </div>
+      <div class="stat stat--new">
+        <div class="stat-label">New regressions</div>
+        <div class="stat-value">3</div>
+      </div>
+      <div class="stat stat--resolved">
+        <div class="stat-label">Resolved</div>
+        <div class="stat-value">2</div>
+      </div>
+      <div class="stat stat--legacy">
+        <div class="stat-label">Legacy unchanged</div>
+        <div class="stat-value">47</div>
+      </div>
+      <div class="stat stat--failed">
+        <div class="stat-label">Failed URLs</div>
+        <div class="stat-value">1</div>
+      </div>
+    </div>
+
+    <div class="verdict">Exit code 1 — 3 new violations compared to golden baseline</div>
+  </header>
+
+  <main>
+
+    <!-- NEW VIOLATIONS (expanded by default) -->
+    <section class="section" id="new">
+      <button class="section-header" type="button" onclick="toggleSection('new')">
+        <span class="section-title">
+          <span class="badge badge--new">New</span>
+          Introduced regressions
+          <span style="color: var(--muted); font-weight: 400;">(3)</span>
+        </span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="section-body">
+
+        <article class="violation">
+          <div class="violation-header">
+            <span class="rule-id">color-contrast</span>
+            <span class="impact impact--serious">serious</span>
+          </div>
+          <p class="page-url">
+            <a href="https://www.example.com/dashboard" target="_blank" rel="noopener">https://www.example.com/dashboard</a>
+          </p>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-label">Selector</span>
+              <code class="detail-value">#main &gt; .card-title</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Element</span>
+              <code class="detail-value">&lt;h2 class="card-title"&gt;Account summary&lt;/h2&gt;</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Summary</span>
+              <span class="detail-value detail-value--prose">Fix any of the following: Element has insufficient color contrast of 3.12 (foreground: #8b949e, background: #ffffff, required ratio: 4.5:1)</span>
+            </div>
+          </div>
+          <a class="help-link" href="https://dequeuniversity.com/rules/axe/4.9/color-contrast" target="_blank" rel="noopener">View axe rule documentation →</a>
+        </article>
+
+        <article class="violation">
+          <div class="violation-header">
+            <span class="rule-id">button-name</span>
+            <span class="impact impact--serious">serious</span>
+          </div>
+          <p class="page-url">
+            <a href="https://www.example.com/products" target="_blank" rel="noopener">https://www.example.com/products</a>
+          </p>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-label">Selector</span>
+              <code class="detail-value">.product-grid &gt; button.icon-only</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Element</span>
+              <code class="detail-value">&lt;button class="icon-only"&gt;&lt;svg&gt;...&lt;/svg&gt;&lt;/button&gt;</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Summary</span>
+              <span class="detail-value detail-value--prose">Fix any of the following: Element does not have an accessible name</span>
+            </div>
+          </div>
+          <a class="help-link" href="https://dequeuniversity.com/rules/axe/4.9/button-name" target="_blank" rel="noopener">View axe rule documentation →</a>
+        </article>
+
+        <article class="violation">
+          <div class="violation-header">
+            <span class="rule-id">target-size</span>
+            <span class="impact impact--moderate">moderate</span>
+          </div>
+          <p class="page-url">
+            <a href="https://www.example.com/contact" target="_blank" rel="noopener">https://www.example.com/contact</a>
+          </p>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-label">Selector</span>
+              <code class="detail-value">footer &gt; a.social-link</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Element</span>
+              <code class="detail-value">&lt;a class="social-link" href="#"&gt;Twitter&lt;/a&gt;</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Summary</span>
+              <span class="detail-value detail-value--prose">Target has insufficient size (20px by 20px, should be at least 24px by 24px)</span>
+            </div>
+          </div>
+          <a class="help-link" href="https://dequeuniversity.com/rules/axe/4.9/target-size" target="_blank" rel="noopener">View axe rule documentation →</a>
+          <div class="screenshot-placeholder">v2: screenshot thumbnail appears here when --screenshots is enabled</div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- RESOLVED (collapsed by default in real impl - shown expanded here for demo) -->
+    <section class="section collapsed" id="resolved">
+      <button class="section-header" type="button" onclick="toggleSection('resolved')">
+        <span class="section-title">
+          <span class="badge badge--resolved">Resolved</span>
+          Fixed since baseline
+          <span style="color: var(--muted); font-weight: 400;">(2)</span>
+        </span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="section-body">
+        <article class="violation">
+          <div class="violation-header">
+            <span class="rule-id">image-alt</span>
+            <span class="impact impact--critical">critical</span>
+          </div>
+          <p class="page-url">
+            <a href="https://www.example.com/" target="_blank" rel="noopener">https://www.example.com/</a>
+          </p>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-label">Selector</span>
+              <code class="detail-value">.hero-banner img</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Summary</span>
+              <span class="detail-value detail-value--prose">Was: missing alt text. No longer present in current scan.</span>
+            </div>
+          </div>
+        </article>
+        <article class="violation">
+          <div class="violation-header">
+            <span class="rule-id">label</span>
+            <span class="impact impact--serious">serious</span>
+          </div>
+          <p class="page-url">
+            <a href="https://www.example.com/contact" target="_blank" rel="noopener">https://www.example.com/contact</a>
+          </p>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-label">Selector</span>
+              <code class="detail-value">#contact-form input[name="email"]</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Summary</span>
+              <span class="detail-value detail-value--prose">Was: form element missing label. Fixed in current scan.</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- LEGACY (collapsed by default) -->
+    <section class="section collapsed" id="legacy">
+      <button class="section-header" type="button" onclick="toggleSection('legacy')">
+        <span class="section-title">
+          <span class="badge badge--legacy">Legacy</span>
+          Known outstanding violations
+          <span style="color: var(--muted); font-weight: 400;">(47)</span>
+        </span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="section-body">
+        <article class="violation">
+          <div class="violation-header">
+            <span class="rule-id">color-contrast</span>
+            <span class="impact impact--serious">serious</span>
+          </div>
+          <p class="page-url">
+            <a href="https://www.example.com/about" target="_blank" rel="noopener">https://www.example.com/about</a>
+          </p>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-label">Selector</span>
+              <code class="detail-value">.team-card .subtitle</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Summary</span>
+              <span class="detail-value detail-value--prose">Unchanged since golden baseline — accepted debt</span>
+            </div>
+          </div>
+        </article>
+        <p style="padding: 0.75rem 1.25rem; font-size: 0.8125rem; color: var(--muted);">
+          + 46 more legacy violations (collapsed in production report to reduce noise)
+        </p>
+      </div>
+    </section>
+
+    <!-- FAILED URLS -->
+    <section class="section collapsed" id="failed">
+      <button class="section-header" type="button" onclick="toggleSection('failed')">
+        <span class="section-title">
+          <span class="badge badge--failed">Failed</span>
+          URLs that could not be scanned
+          <span style="color: var(--muted); font-weight: 400;">(1)</span>
+        </span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="section-body">
+        <div class="failed-url">
+          <a href="https://www.example.com/legacy-app" target="_blank" rel="noopener" style="color: var(--link); text-decoration: none; word-break: break-all;">https://www.example.com/legacy-app</a>
+          <span class="error-code">HTTP 404</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    Generated by a11y-spider v1.0.0 · axe-core 4.9.1 · WCAG 2.2 AA · Compared to golden-baseline.json
+  </footer>
+
+  <script>
+    function toggleSection(id) {
+      document.getElementById(id).classList.toggle('collapsed');
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.DS_Store
+
+# Scan history and reports (local / CI artifacts)
+history/*
+!history/.gitkeep
+reports/*
+!reports/.gitkeep
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/

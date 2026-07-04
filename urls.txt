@@ -1,0 +1,4 @@
+# Production URLs to scan (one per line; HTTPS required by default)
+https://www.example.com/
+https://www.example.com/products
+https://www.example.com/contact

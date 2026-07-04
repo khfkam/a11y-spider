@@ -1,0 +1,4 @@
+{
+  "complianceLevel": "AA",
+  "excludeSelectors": ["#third-party-chat"]
+}
