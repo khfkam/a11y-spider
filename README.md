@@ -14,14 +14,81 @@ nvm use
 npm install
 npm run build
 npm run a11y-spider -- info
-npm run dev -- scan --urls urls.txt
 ```
+
+Copy environment defaults and add your production URLs:
+
+```bash
+cp .env.example .env
+# Edit urls.txt — one HTTPS URL per line
+```
+
+### First run (bootstrap baseline)
+
+```bash
+npm run dev -- scan --urls urls.txt --init-baseline
+```
+
+This scans every URL in `urls.txt`, writes a snapshot under `./history/`, and generates `./reports/report.html` plus `./reports/report.json`. No diff failure on the first run.
+
+### Day-to-day / CI
+
+Compare against a pinned golden baseline and fail on new regressions:
+
+```bash
+# Pin after a release audit
+npm run dev -- scan --urls urls.txt --pin-golden
+
+# Local dev
+npm run dev -- scan --urls urls.txt --baseline golden
+
+# CI
+npm run a11y-spider -- scan --urls urls.txt --baseline golden --fail-on new --ci
+```
+
+Open the HTML report:
+
+```bash
+open reports/report.html
+```
+
+## Configuration
+
+Key settings in `.env` (see `.env.example`):
+
+| Variable | Default | Purpose |
+| -------- | ------- | ------- |
+| `AXE_LEVEL` | `AA` | WCAG 2.2 level: `A`, `AA`, or `AAA` |
+| `PAGE_WAIT_STRATEGY` | `networkidle` | SPA wait: `networkidle`, `domcontentloaded`, or `load` |
+| `HISTORY_DIR` | `./history` | Scan snapshot ledger |
+| `REPORTS_DIR` | `./reports` | Latest HTML/JSON reports |
+| `ALLOW_HTTP` | `false` | Allow `http://` URLs (production should stay HTTPS) |
+| `FAIL_ON` | `new` | Default `--fail-on` mode |
+
+## Exit codes
+
+| Code | Meaning |
+| ---- | ------- |
+| `0` | Success — no new violations (or `--fail-on none`) |
+| `1` | New violations detected (`--fail-on new`) |
+| `2` | Configuration error (invalid URLs, missing baseline file, level mismatch) |
+| `3` | All URLs failed to scan |
 
 ## Documentation
 
 - [Technical proposal](./A11y_Spider_Proposal_v2.md)
 - [Agent implementation guide](./AGENTS.md)
+- [Example HTML report](./examples/report-example.html)
+
+## Development
+
+```bash
+npm test
+npm run test:watch
+npm run typecheck
+npm run build
+```
 
 ## Status
 
-v0.1.0 — project scaffold. Scan, diff, and report pipelines are not yet implemented.
+v0.1.0 — scan, ledger, diff, report, and CLI pipeline implemented. History retention and parallel scans are deferred to v2.

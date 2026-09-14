@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseComplianceLevel } from './config.js';
 import { ingestUrls } from './ingest.js';
+import { parsePageWaitStrategy, parsePositiveInt, runScanPipeline } from './pipeline.js';
 
 loadEnv();
 
@@ -28,12 +29,13 @@ program
   .option('--baseline <mode>', 'Baseline: latest, golden, or path to JSON file', 'latest')
   .option('--init-baseline', 'Bootstrap first baseline (no diff failure)')
   .option('--pin-golden', 'Copy current scan to golden-baseline.json')
-  .option('--fail-on <mode>', 'Exit 1 on condition', 'new')
+  .option('--fail-on <mode>', 'Exit 1 on condition (use "none" to never fail)', 'new')
   .option('--ci', 'CI mode: suppress verbose stdout')
   .option('--urls <file>', 'Path to urls.txt', 'urls.txt')
   .action(async (options) => {
-    const complianceLevel = parseComplianceLevel(options.level);
+    const complianceLevel = parseComplianceLevel(process.env.AXE_LEVEL ?? options.level);
     const allowHttp = process.env.ALLOW_HTTP === 'true';
+    const failOn = options.failOn ?? process.env.FAIL_ON ?? 'new';
 
     try {
       const targets = await ingestUrls({
@@ -41,17 +43,37 @@ program
         allowHttp,
       });
 
-      if (options.ci) {
-        console.log(
-          `a11y-spider v${version} — ${targets.length} URL(s), WCAG 2.2 ${complianceLevel} (scan pipeline not implemented)`,
-        );
-      } else {
+      if (!options.ci) {
         console.log(`Loaded ${targets.length} URL(s) from ${options.urls}`);
         console.log(`WCAG 2.2 level: ${complianceLevel}`);
-        console.log('Scan pipeline is scaffolded; implement src/scan.ts next.');
       }
 
-      process.exit(0);
+      const result = await runScanPipeline({
+        urls: targets.map((target) => target.url),
+        complianceLevel,
+        baselineArg: options.baseline,
+        initBaseline: Boolean(options.initBaseline),
+        pinGolden: Boolean(options.pinGolden),
+        failOn,
+        ci: Boolean(options.ci),
+        historyDir: process.env.HISTORY_DIR ?? './history',
+        reportsDir: process.env.REPORTS_DIR ?? './reports',
+        pageWaitStrategy: parsePageWaitStrategy(process.env.PAGE_WAIT_STRATEGY),
+        pageTimeoutMs: parsePositiveInt(process.env.PAGE_TIMEOUT_MS, 30_000),
+        navigationTimeoutMs: parsePositiveInt(process.env.NAVIGATION_TIMEOUT_MS, 60_000),
+        excludeSelectors: [],
+      });
+
+      if (options.ci) {
+        console.log(
+          `a11y-spider v${version} — ${targets.length} URL(s), WCAG 2.2 ${complianceLevel}, exit ${result.exitCode}`,
+        );
+      } else {
+        console.log(`Snapshot: ${result.snapshotPath}`);
+        console.log(`Reports: ${result.reportPaths.htmlPath}, ${result.reportPaths.jsonPath}`);
+      }
+
+      process.exit(result.exitCode);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`Configuration error: ${message}`);
