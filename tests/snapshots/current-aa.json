@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "runId": "scan_2026-06-15T120000Z",
+    "timestamp": "2026-06-15T12:00:00.000Z",
+    "axeVersion": "4.12.1",
+    "complianceLevel": "AA",
+    "wcagVersion": "2.2",
+    "tags": ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"],
+    "toolVersion": "0.1.0"
+  },
+  "urls": [
+    {
+      "url": "https://www.example.com/dashboard",
+      "status": "ok",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "description": "Elements must have sufficient color contrast",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/color-contrast",
+          "target": ["#main", ".card-title"],
+          "html": "<h2 class=\"card-title\">Account summary</h2>",
+          "failureSummary": "Fix contrast",
+          "signature": "https://www.example.com/dashboard|color-contrast|#main > .card-title"
+        },
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "description": "Buttons must have discernible text",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/button-name",
+          "target": ["button.submit"],
+          "html": "<button class=\"submit\"></button>",
+          "failureSummary": "Add button text",
+          "signature": "https://www.example.com/dashboard|button-name|button.submit"
+        }
+      ]
+    },
+    {
+      "url": "https://www.example.com/missing",
+      "status": "failed",
+      "violations": [],
+      "error": "HTTP 404 for https://www.example.com/missing"
+    }
+  ]
+}
