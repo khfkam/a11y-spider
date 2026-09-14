@@ -265,6 +265,6 @@ npm run a11y-spider -- info
 
 ## Current status
 
-v0.1.0 — Phases 1–4 complete. Full pipeline: ingest → scan → ledger → diff → report with CLI exit codes (`0`–`3`). **46 tests** green.
+**v1.0.0** — Phases 1–4 complete. Full pipeline: ingest → scan → ledger → diff → report with CLI exit codes (`0`–`3`). **50 tests** green.
 
 **Deferred to v2:** history retention pruning, parallel scans, SARIF, screenshots, authenticated URLs.

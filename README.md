@@ -99,4 +99,4 @@ npm run build
 
 ## Status
 
-v0.1.0 — scan, ledger, diff, report, and CLI pipeline implemented. History retention and parallel scans are deferred to v2.
+**v1.0.0** — production-ready batch scanner with regression tracking. History retention, parallel scans, and consent/bot bypass are deferred to v2.
