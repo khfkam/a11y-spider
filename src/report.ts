@@ -1,7 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { normalizeTarget } from './diff.js';
-import type { DiffViolation, ScanReport, ViolationImpact } from './types.js';
+import type {
+  DiffViolation,
+  ReportJsonOutput,
+  ScanReport,
+  UrlFailureGroup,
+  ViolationImpact,
+} from './types.js';
 
 export interface ReportOptions {
   reportsDir: string;
@@ -308,6 +314,108 @@ const REPORT_STYLES = `
       font-size: 0.8125rem;
       color: var(--muted);
     }
+
+    .url-panel {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .url-panel:last-child { border-bottom: none; }
+
+    .url-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      width: 100%;
+      padding: 0.875rem 1.25rem;
+      background: transparent;
+      border: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .url-panel-header:hover { background: rgba(255, 255, 255, 0.03); }
+
+    .url-panel-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .url-panel-link {
+      color: var(--link);
+      font-size: 0.875rem;
+      word-break: break-all;
+      text-decoration: none;
+    }
+
+    .url-panel-link:hover { text-decoration: underline; }
+
+    .url-panel-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .url-panel-counts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      justify-content: flex-end;
+    }
+
+    .count-pill {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .count-pill--new { background: rgba(248, 81, 73, 0.16); color: var(--new); }
+    .count-pill--resolved { background: rgba(63, 185, 80, 0.16); color: var(--resolved); }
+    .count-pill--legacy { background: rgba(139, 148, 158, 0.16); color: var(--legacy); }
+    .count-pill--failed { background: rgba(210, 153, 34, 0.16); color: var(--failed); }
+
+    .url-panel.collapsed .url-panel-body { display: none; }
+    .url-panel.collapsed .url-panel-chevron { transform: rotate(-90deg); }
+
+    .url-panel-chevron {
+      color: var(--muted);
+      transition: transform 0.2s;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .url-panel-body {
+      padding: 0 0 0.75rem;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .url-panel-error {
+      margin: 0 1.25rem 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      background: rgba(210, 153, 34, 0.12);
+      border: 1px solid rgba(210, 153, 34, 0.25);
+      color: #f2cc60;
+      font-size: 0.8125rem;
+    }
+
+    .url-bucket {
+      padding: 0.75rem 1.25rem 0.25rem;
+    }
+
+    .url-bucket-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
 `;
 
 function escapeHtml(value: string): string {
@@ -326,11 +434,77 @@ function formatBaselineLabel(report: ScanReport, baselineLabel?: string): string
   return report.baselineRunId ?? 'none (init baseline)';
 }
 
+export function groupReportByUrl(report: ScanReport): UrlFailureGroup[] {
+  const urls = new Set<string>([
+    ...report.new.map((violation) => violation.url),
+    ...report.resolved.map((violation) => violation.url),
+    ...report.legacy.map((violation) => violation.url),
+    ...report.failedUrls.map((failed) => failed.url),
+  ]);
+
+  const failedByUrl = new Map(report.failedUrls.map((failed) => [failed.url, failed.error]));
+
+  const groups = [...urls].map((url) => {
+    const newViolations = report.new.filter((violation) => violation.url === url);
+    const resolvedViolations = report.resolved.filter((violation) => violation.url === url);
+    const legacyViolations = report.legacy.filter((violation) => violation.url === url);
+    const error = failedByUrl.get(url);
+    const scanStatus = error ? 'failed' : 'ok';
+
+    return {
+      url,
+      scanStatus,
+      error,
+      counts: {
+        new: newViolations.length,
+        resolved: resolvedViolations.length,
+        legacy: legacyViolations.length,
+        total: newViolations.length + resolvedViolations.length + legacyViolations.length,
+      },
+      new: newViolations,
+      resolved: resolvedViolations,
+      legacy: legacyViolations,
+    } satisfies UrlFailureGroup;
+  });
+
+  return groups.sort((a, b) => {
+    if (a.scanStatus !== b.scanStatus) {
+      return a.scanStatus === 'failed' ? -1 : 1;
+    }
+
+    if (b.counts.new !== a.counts.new) {
+      return b.counts.new - a.counts.new;
+    }
+
+    if (b.counts.total !== a.counts.total) {
+      return b.counts.total - a.counts.total;
+    }
+
+    return a.url.localeCompare(b.url);
+  });
+}
+
+export function getUrlFailures(report: ScanReport, url: string): UrlFailureGroup | undefined {
+  return groupReportByUrl(report).find((group) => group.url === url);
+}
+
+export function buildReportJsonOutput(report: ScanReport): ReportJsonOutput {
+  return {
+    ...report,
+    byUrl: groupReportByUrl(report),
+  };
+}
+
 function renderImpactBadge(impact: ViolationImpact): string {
   return `<span class="impact impact--${impact}">${escapeHtml(impact)}</span>`;
 }
 
-function renderViolation(violation: DiffViolation, bucket: DiffViolation['bucket']): string {
+function renderViolation(
+  violation: DiffViolation,
+  bucket: DiffViolation['bucket'],
+  options: { showUrl?: boolean } = {},
+): string {
+  const showUrl = options.showUrl ?? true;
   const selector = escapeHtml(normalizeTarget(violation.target));
   const summary =
     bucket === 'resolved'
@@ -355,9 +529,13 @@ function renderViolation(violation: DiffViolation, bucket: DiffViolation['bucket
             <span class="rule-id">${escapeHtml(violation.ruleId)}</span>
             ${renderImpactBadge(violation.impact)}
           </div>
-          <p class="page-url">
+          ${
+            showUrl
+              ? `<p class="page-url">
             <a href="${escapeHtml(violation.url)}" target="_blank" rel="noopener">${escapeHtml(violation.url)}</a>
-          </p>
+          </p>`
+              : ''
+          }
           <div class="detail-grid">
             <div class="detail-row">
               <span class="detail-label">Selector</span>
@@ -409,6 +587,87 @@ function renderVerdict(report: ScanReport): string {
 
   const noun = report.summary.newCount === 1 ? 'violation' : 'violations';
   return `<div class="verdict">Exit code 1 — ${report.summary.newCount} new ${noun} compared to ${escapeHtml(formatBaselineLabel(report))}</div>`;
+}
+
+function renderUrlBucket(
+  title: string,
+  badgeClass: DiffViolation['bucket'],
+  violations: DiffViolation[],
+): string {
+  if (violations.length === 0) {
+    return '';
+  }
+
+  return `<div class="url-bucket">
+      <div class="url-bucket-title">${escapeHtml(title)} (${violations.length})</div>
+      ${violations.map((violation) => renderViolation(violation, badgeClass, { showUrl: false })).join('\n')}
+    </div>`;
+}
+
+function renderUrlPanel(group: UrlFailureGroup, index: number): string {
+  const panelId = `url-panel-${index}`;
+  const collapsed = group.counts.new === 0 && group.scanStatus === 'ok';
+  const collapsedClass = collapsed ? ' collapsed' : '';
+  const counts = [
+    group.counts.new > 0
+      ? `<span class="count-pill count-pill--new">${group.counts.new} new</span>`
+      : '',
+    group.counts.resolved > 0
+      ? `<span class="count-pill count-pill--resolved">${group.counts.resolved} resolved</span>`
+      : '',
+    group.counts.legacy > 0
+      ? `<span class="count-pill count-pill--legacy">${group.counts.legacy} legacy</span>`
+      : '',
+    group.scanStatus === 'failed'
+      ? `<span class="count-pill count-pill--failed">scan failed</span>`
+      : '',
+    group.counts.total === 0 && group.scanStatus === 'ok'
+      ? `<span class="count-pill count-pill--resolved">clean</span>`
+      : '',
+  ].join('');
+
+  const body =
+    group.scanStatus === 'failed'
+      ? `<div class="url-panel-error">${escapeHtml(group.error ?? 'Scan failed')}</div>${renderUrlBucket('New', 'new', group.new)}${renderUrlBucket('Resolved', 'resolved', group.resolved)}${renderUrlBucket('Legacy', 'legacy', group.legacy)}`
+      : `${renderUrlBucket('New', 'new', group.new)}${renderUrlBucket('Resolved', 'resolved', group.resolved)}${renderUrlBucket('Legacy', 'legacy', group.legacy)}`;
+
+  return `<article class="url-panel${collapsedClass}" id="${panelId}" data-url="${escapeHtml(group.url)}">
+      <button class="url-panel-header" type="button" onclick="toggleUrlPanel('${panelId}')">
+        <span class="url-panel-title">
+          <a class="url-panel-link" href="${escapeHtml(group.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(group.url)}</a>
+          <span class="url-panel-meta">${group.scanStatus === 'failed' ? 'Could not scan this URL' : `${group.counts.total} violation(s) in current diff`}</span>
+        </span>
+        <span class="url-panel-counts">${counts}</span>
+        <span class="url-panel-chevron">▼</span>
+      </button>
+      <div class="url-panel-body">
+        ${body}
+      </div>
+    </article>`;
+}
+
+function renderByUrlSection(report: ScanReport): string {
+  const groups = groupReportByUrl(report);
+
+  if (groups.length === 0) {
+    return '';
+  }
+
+  const body = groups.map((group, index) => renderUrlPanel(group, index)).join('\n');
+
+  return `<section class="section" id="by-url">
+      <button class="section-header" type="button" onclick="toggleSection('by-url')">
+        <span class="section-title">
+          <span class="badge badge--legacy">By URL</span>
+          Failures by URL
+          <span style="color: var(--muted); font-weight: 400;">(${groups.length})</span>
+        </span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="section-body">
+        ${body}
+      </div>
+    </section>`;
 }
 
 export function renderHtmlReport(report: ScanReport, options: Pick<ReportOptions, 'baselineLabel'> = {}): string {
@@ -485,6 +744,7 @@ export function renderHtmlReport(report: ScanReport, options: Pick<ReportOptions
   </header>
 
   <main>
+    ${renderByUrlSection(report)}
     ${renderViolationSection('new', 'new', 'Introduced regressions', report.new.length, false, newBody)}
     ${renderViolationSection('resolved', 'resolved', 'Fixed since baseline', report.summary.resolvedCount, true, resolvedBody)}
     ${renderViolationSection('legacy', 'legacy', 'Known outstanding violations', report.summary.legacyCount, true, legacyBody)}
@@ -498,6 +758,22 @@ export function renderHtmlReport(report: ScanReport, options: Pick<ReportOptions
   <script>
     function toggleSection(id) {
       document.getElementById(id).classList.toggle('collapsed');
+    }
+
+    function toggleUrlPanel(id) {
+      document.getElementById(id)?.classList.toggle('collapsed');
+    }
+
+    function viewUrlFailures(url) {
+      const panels = document.querySelectorAll('.url-panel[data-url]');
+      for (const panel of panels) {
+        if (panel.getAttribute('data-url') === url) {
+          panel.classList.remove('collapsed');
+          document.getElementById('by-url')?.classList.remove('collapsed');
+          panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+      }
     }
   </script>
 
@@ -518,10 +794,44 @@ export async function writeReports(
   const jsonPath = join(options.reportsDir, 'report.json');
   const htmlPath = join(options.reportsDir, 'report.html');
 
-  await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeFile(jsonPath, `${JSON.stringify(buildReportJsonOutput(report), null, 2)}\n`, 'utf8');
   await writeFile(htmlPath, renderHtmlReport(report, options), 'utf8');
 
   return { htmlPath, jsonPath };
+}
+
+export function printFailuresByUrl(report: ScanReport, ci = false): void {
+  if (ci) {
+    return;
+  }
+
+  const groups = groupReportByUrl(report);
+  if (groups.length === 0) {
+    return;
+  }
+
+  console.log('');
+  console.log('Failures by URL:');
+
+  for (const group of groups) {
+    const parts = [
+      group.counts.new > 0 ? `${group.counts.new} new` : '',
+      group.counts.resolved > 0 ? `${group.counts.resolved} resolved` : '',
+      group.counts.legacy > 0 ? `${group.counts.legacy} legacy` : '',
+      group.scanStatus === 'failed' ? 'scan failed' : '',
+    ].filter(Boolean);
+
+    console.log(`  ${group.url}${parts.length > 0 ? ` — ${parts.join(', ')}` : ''}`);
+
+    if (group.scanStatus === 'failed') {
+      console.log(`    ${group.error ?? 'Scan failed'}`);
+      continue;
+    }
+
+    for (const violation of [...group.new, ...group.legacy]) {
+      console.log(`    • ${violation.ruleId} (${violation.impact}) — ${violation.failureSummary}`);
+    }
+  }
 }
 
 export function printConsoleSummary(report: ScanReport, ci: boolean): void {
@@ -530,22 +840,9 @@ export function printConsoleSummary(report: ScanReport, ci: boolean): void {
 
   console.log(headline);
 
-  if (ci || summary.newCount === 0) {
+  if (ci) {
     return;
   }
 
-  console.log('');
-  console.log('New violations:');
-  for (const violation of report.new) {
-    console.log(`  • ${violation.ruleId} (${violation.impact}) — ${violation.url}`);
-    console.log(`    ${violation.failureSummary}`);
-  }
-
-  if (summary.failedUrlCount > 0) {
-    console.log('');
-    console.log('Failed URLs:');
-    for (const failed of report.failedUrls) {
-      console.log(`  • ${failed.url} — ${failed.error}`);
-    }
-  }
+  printFailuresByUrl(report, false);
 }

@@ -52,6 +52,14 @@ Open the HTML report:
 open reports/report.html
 ```
 
+The report includes a **Failures by URL** section at the top. Click any URL row to expand its new, resolved, and legacy violations. Scan failures (404, timeout, etc.) appear in the same list with the error message. In the browser console you can also jump to a URL with:
+
+```javascript
+viewUrlFailures('https://www.example.com/page')
+```
+
+`report.json` now includes a `byUrl` array with the same grouped data for CI dashboards and scripts. Use `getUrlFailures(report, url)` programmatically from `src/report.ts`.
+
 ## Configuration
 
 Key settings in `.env` (see `.env.example`):

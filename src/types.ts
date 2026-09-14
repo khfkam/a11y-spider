@@ -60,3 +60,22 @@ export interface ScanReport {
   legacy: DiffViolation[];
   failedUrls: Array<{ url: string; error: string }>;
 }
+
+export interface UrlFailureGroup {
+  url: string;
+  scanStatus: UrlScanStatus;
+  error?: string;
+  counts: {
+    new: number;
+    resolved: number;
+    legacy: number;
+    total: number;
+  };
+  new: DiffViolation[];
+  resolved: DiffViolation[];
+  legacy: DiffViolation[];
+}
+
+export interface ReportJsonOutput extends ScanReport {
+  byUrl: UrlFailureGroup[];
+}

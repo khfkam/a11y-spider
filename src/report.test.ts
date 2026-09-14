@@ -4,8 +4,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { diffScans } from './diff.js';
-import { printConsoleSummary, renderHtmlReport, writeReports } from './report.js';
-import type { ScanReport, ScanSnapshot } from './types.js';
+import {
+  getUrlFailures,
+  groupReportByUrl,
+  printConsoleSummary,
+  printFailuresByUrl,
+  renderHtmlReport,
+  writeReports,
+} from './report.js';
+import type { ReportJsonOutput, ScanReport, ScanSnapshot } from './types.js';
 
 const snapshotsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'tests', 'snapshots');
 
@@ -32,11 +39,11 @@ describe('writeReports', () => {
     await rm(reportsDir, { recursive: true, force: true });
   });
 
-  it('writes report.json with the full diff payload schema', async () => {
+  it('writes report.json with the full diff payload schema and byUrl groups', async () => {
     const { jsonPath } = await writeReports(report, { reportsDir });
 
     expect(jsonPath).toBe(join(reportsDir, 'report.json'));
-    const written = JSON.parse(await readFile(jsonPath, 'utf8')) as ScanReport;
+    const written = JSON.parse(await readFile(jsonPath, 'utf8')) as ReportJsonOutput;
 
     expect(written.meta.runId).toBe(report.meta.runId);
     expect(written.baselineRunId).toBe('scan_2026-06-01T090000Z');
@@ -52,6 +59,15 @@ describe('writeReports', () => {
     expect(written.failedUrls).toEqual([
       { url: 'https://www.example.com/missing', error: 'HTTP 404 for https://www.example.com/missing' },
     ]);
+    expect(written.byUrl).toHaveLength(2);
+
+    const dashboard = written.byUrl.find((group) => group.url.includes('/dashboard'));
+    expect(dashboard?.counts).toEqual({ new: 1, resolved: 1, legacy: 1, total: 3 });
+    expect(dashboard?.scanStatus).toBe('ok');
+
+    const missing = written.byUrl.find((group) => group.url.includes('/missing'));
+    expect(missing?.scanStatus).toBe('failed');
+    expect(missing?.error).toMatch(/404/);
   });
 
   it('writes report.html with summary bar and bucket sections', async () => {
@@ -96,6 +112,69 @@ describe('renderHtmlReport', () => {
     expect(html).toContain('2.2 AA');
     expect(html).toContain('New regressions');
     expect(html).toContain('Failed URLs');
+  });
+
+  it('includes an interactive per-URL failures section', () => {
+    const html = renderHtmlReport(report);
+
+    expect(html).toContain('id="by-url"');
+    expect(html).toContain('Failures by URL');
+    expect(html).toContain('toggleUrlPanel(');
+    expect(html).toContain('viewUrlFailures(');
+    expect(html).toContain('https://www.example.com/dashboard');
+    expect(html).toContain('https://www.example.com/missing');
+  });
+});
+
+describe('groupReportByUrl', () => {
+  let report: ScanReport;
+
+  beforeAll(async () => {
+    const baseline = await loadSnapshot('baseline-aa.json');
+    const current = await loadSnapshot('current-aa.json');
+    report = diffScans(current, baseline);
+  });
+
+  it('groups violations and scan failures by URL', () => {
+    const groups = groupReportByUrl(report);
+
+    expect(groups).toHaveLength(2);
+    expect(getUrlFailures(report, 'https://www.example.com/dashboard')?.counts.total).toBe(3);
+    expect(getUrlFailures(report, 'https://www.example.com/missing')?.scanStatus).toBe('failed');
+  });
+});
+
+describe('printFailuresByUrl', () => {
+  let report: ScanReport;
+
+  beforeAll(async () => {
+    const baseline = await loadSnapshot('baseline-aa.json');
+    const current = await loadSnapshot('current-aa.json');
+    report = diffScans(current, baseline);
+  });
+
+  it('prints grouped failures for each URL outside CI mode', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    printFailuresByUrl(report, false);
+
+    const output = log.mock.calls.map(([line]) => String(line)).join('\n');
+    expect(output).toContain('Failures by URL');
+    expect(output).toContain('https://www.example.com/dashboard');
+    expect(output).toContain('button-name');
+    expect(output).toContain('https://www.example.com/missing');
+
+    log.mockRestore();
+  });
+
+  it('suppresses per-URL detail in CI mode', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    printFailuresByUrl(report, true);
+
+    expect(log).not.toHaveBeenCalled();
+
+    log.mockRestore();
   });
 });
 
