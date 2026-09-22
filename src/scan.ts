@@ -3,6 +3,11 @@ import type { AxeResults } from 'axe-core';
 import { createRequire } from 'node:module';
 import { chromium, type Page } from 'playwright';
 import { resolveComplianceTags } from './config.js';
+import {
+  tryDismissConsent,
+  type ConsentOptions,
+  type ConsentSelectorEntry,
+} from './consent.js';
 import { buildSignature, canonicalizeUrl } from './diff.js';
 import type {
   ComplianceLevel,
@@ -24,6 +29,8 @@ export interface ScanOptions {
   pageTimeoutMs: number;
   navigationTimeoutMs: number;
   excludeSelectors: string[];
+  consent?: ConsentOptions;
+  consentSelectorMeta?: ConsentSelectorEntry[];
 }
 
 function generateRunId(date = new Date()): string {
@@ -103,6 +110,10 @@ async function scanUrl(page: Page, url: string, options: ScanOptions): Promise<U
 
   if (response.status() >= 400) {
     throw new Error(`HTTP ${response.status()} for ${url}`);
+  }
+
+  if (options.consent) {
+    await tryDismissConsent(page, options.consent, options.consentSelectorMeta ?? []);
   }
 
   let builder = new AxeBuilder({ page }).withTags(resolveComplianceTags(options.complianceLevel));

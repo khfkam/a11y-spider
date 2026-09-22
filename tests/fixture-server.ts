@@ -23,6 +23,13 @@ export async function startFixtureServer(): Promise<{ server: Server; baseUrl: s
       return;
     }
 
+    if (pathname === '/cookie-banner.html') {
+      const html = await readFile(join(fixturesDir, 'cookie-banner.html'), 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+      return;
+    }
+
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found');
   });

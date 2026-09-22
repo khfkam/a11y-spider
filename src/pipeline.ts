@@ -1,4 +1,11 @@
 import { basename } from 'node:path';
+import {
+  loadConsentSelectorsFile,
+  resolveConsentFilePath,
+  resolveConsentOptions,
+  type ConsentOptions,
+  type ConsentSelectorEntry,
+} from './consent.js';
 import { diffScans } from './diff.js';
 import { loadBaseline, pinGoldenBaseline, writeSnapshot, type BaselineMode } from './ledger.js';
 import { printConsoleSummary, writeReports } from './report.js';
@@ -19,6 +26,8 @@ export interface ScanPipelineOptions {
   pageTimeoutMs: number;
   navigationTimeoutMs: number;
   excludeSelectors: string[];
+  consent?: ConsentOptions;
+  consentSelectorMeta?: ConsentSelectorEntry[];
 }
 
 export interface ScanPipelineResult {
@@ -93,6 +102,27 @@ export function parsePositiveInt(value: string | undefined, fallback: number): n
  * Run scan → ledger → diff → report and return the CI exit code.
  */
 export async function runScanPipeline(options: ScanPipelineOptions): Promise<ScanPipelineResult> {
+  let consent = options.consent;
+  let consentSelectorMeta = options.consentSelectorMeta;
+
+  if (!consent) {
+    consent = await resolveConsentOptions(process.env);
+    try {
+      const file = await loadConsentSelectorsFile(
+        resolveConsentFilePath(process.env.CONSENT_SELECTORS_FILE),
+      );
+      consentSelectorMeta = file.selectors;
+    } catch {
+      consentSelectorMeta = [];
+    }
+  }
+
+  if (consent.enabled && !options.ci) {
+    console.log(
+      `Consent dismiss: ${consent.selectors.length} selector(s), timeout ${consent.timeoutMs}ms`,
+    );
+  }
+
   const snapshot = await runScan({
     urls: options.urls,
     complianceLevel: options.complianceLevel,
@@ -100,6 +130,11 @@ export async function runScanPipeline(options: ScanPipelineOptions): Promise<Sca
     pageTimeoutMs: options.pageTimeoutMs,
     navigationTimeoutMs: options.navigationTimeoutMs,
     excludeSelectors: options.excludeSelectors,
+    consent: {
+      ...consent,
+      verbose: consent.verbose && !options.ci,
+    },
+    consentSelectorMeta,
   });
 
   const baselineRequest = resolveBaselineRequest(options.baselineArg);

@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "description": "Common cookie / consent accept-button selectors tried before each axe scan. Edit this file to add site-specific selectors. Dismissal is fail-soft: if nothing matches, the scan continues.",
+  "timeoutMs": 2500,
+  "selectors": [
+    {
+      "id": "onetrust-accept",
+      "vendor": "OneTrust",
+      "selector": "#onetrust-accept-btn-handler",
+      "notes": "Accept Cookies (McDonald's and many enterprise sites)"
+    },
+    {
+      "id": "onetrust-accept-text",
+      "vendor": "OneTrust",
+      "selector": "#onetrust-banner-sdk button:has-text(\"Accept Cookies\")",
+      "notes": "OneTrust banner text fallback"
+    },
+    {
+      "id": "cassie-accept",
+      "vendor": "Cassie / ITV",
+      "selector": "#cassie_accept_all_pre_banner",
+      "notes": "ITV Cassie pre-banner Accept"
+    },
+    {
+      "id": "cassie-accept-class",
+      "vendor": "Cassie / ITV",
+      "selector": "button.cassie-accept-all",
+      "notes": "Cassie accept-all class"
+    },
+    {
+      "id": "wayfair-accept",
+      "vendor": "Wayfair",
+      "selector": "[data-test-id=\"AcceptAllButon\"]",
+      "notes": "Wayfair Accept All Cookies (vendor typo: Buton)"
+    },
+    {
+      "id": "wayfair-accept-text",
+      "vendor": "Wayfair",
+      "selector": "button:has-text(\"Accept All Cookies\")",
+      "notes": "Wayfair text fallback"
+    },
+    {
+      "id": "sourcepoint-accept",
+      "vendor": "Sourcepoint",
+      "selector": "button.sp_choice_type_11",
+      "notes": "Sourcepoint Accept all choice type"
+    },
+    {
+      "id": "sourcepoint-accept-aria",
+      "vendor": "Sourcepoint",
+      "selector": "button[aria-label=\"Accept all\"]",
+      "notes": "Sourcepoint aria-label Accept all"
+    },
+    {
+      "id": "sourcepoint-accept-title",
+      "vendor": "Sourcepoint",
+      "selector": "button[title=\"Accept all\"]",
+      "notes": "Sourcepoint title Accept all"
+    },
+    {
+      "id": "bbc-accept",
+      "vendor": "BBC",
+      "selector": "button[data-testid=\"accept-button\"]",
+      "notes": "BBC ConsentBanner Accept additional cookies"
+    },
+    {
+      "id": "cookiebot-allow-all",
+      "vendor": "Cookiebot",
+      "selector": "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+      "notes": "Cookiebot Allow all"
+    },
+    {
+      "id": "cookiebot-accept",
+      "vendor": "Cookiebot",
+      "selector": "#CybotCookiebotDialogBodyButtonAccept",
+      "notes": "Cookiebot Accept"
+    },
+    {
+      "id": "didomi-agree",
+      "vendor": "Didomi",
+      "selector": "#didomi-notice-agree-button",
+      "notes": "Didomi Agree and Close"
+    },
+    {
+      "id": "generic-accept-all",
+      "vendor": "Generic",
+      "selector": "button:has-text(\"Accept all\")",
+      "notes": "Generic Accept all button text"
+    },
+    {
+      "id": "generic-accept-all-cookies",
+      "vendor": "Generic",
+      "selector": "button:has-text(\"Accept All Cookies\")",
+      "notes": "Generic Accept All Cookies"
+    },
+    {
+      "id": "generic-accept-cookies",
+      "vendor": "Generic",
+      "selector": "button:has-text(\"Accept Cookies\")",
+      "notes": "Generic Accept Cookies"
+    },
+    {
+      "id": "generic-accept-additional",
+      "vendor": "Generic",
+      "selector": "button:has-text(\"Accept additional cookies\")",
+      "notes": "BBC-style Accept additional cookies text"
+    },
+    {
+      "id": "generic-aria-accept-all",
+      "vendor": "Generic",
+      "selector": "button[aria-label*=\"Accept all\" i]",
+      "notes": "Generic aria-label containing Accept all"
+    },
+    {
+      "id": "generic-accept",
+      "vendor": "Generic",
+      "selector": "button:has-text(\"Accept\")",
+      "notes": "Generic Accept (last resort — prefer more specific selectors above)"
+    }
+  ]
+}

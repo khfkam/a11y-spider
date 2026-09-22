@@ -33,6 +33,13 @@ async function startFixtureServer(): Promise<{ server: Server; baseUrl: string }
       return;
     }
 
+    if (pathname === '/cookie-banner.html') {
+      const html = await readFile(join(fixturesDir, 'cookie-banner.html'), 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+      return;
+    }
+
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found');
   });
@@ -55,7 +62,7 @@ describe('runScan', () => {
 
   beforeAll(async () => {
     ({ server, baseUrl } = await startFixtureServer());
-  });
+  }, 60_000);
 
   afterAll(async () => {
     await new Promise<void>((resolve, reject) => {
@@ -71,22 +78,26 @@ describe('runScan', () => {
     excludeSelectors: [] as string[],
   };
 
-  it('returns violations with signature, html, and target from fixture HTML', async () => {
-    const snapshot = await runScan({
-      ...defaultOptions,
-      urls: [`${baseUrl}/missing-alt.html`],
-    });
+  it(
+    'returns violations with signature, html, and target from fixture HTML',
+    async () => {
+      const snapshot = await runScan({
+        ...defaultOptions,
+        urls: [`${baseUrl}/missing-alt.html`],
+      });
 
-    expect(snapshot.urls).toHaveLength(1);
-    expect(snapshot.urls[0]?.status).toBe('ok');
+      expect(snapshot.urls).toHaveLength(1);
+      expect(snapshot.urls[0]?.status).toBe('ok');
 
-    const imageAlt = snapshot.urls[0]?.violations.find((v) => v.ruleId === 'image-alt');
-    expect(imageAlt).toBeDefined();
-    expect(imageAlt?.html).toContain('<img');
-    expect(imageAlt?.target.length).toBeGreaterThan(0);
-    expect(imageAlt?.signature).toContain('image-alt');
-    expect(imageAlt?.signature).toContain('|');
-  });
+      const imageAlt = snapshot.urls[0]?.violations.find((v) => v.ruleId === 'image-alt');
+      expect(imageAlt).toBeDefined();
+      expect(imageAlt?.html).toContain('<img');
+      expect(imageAlt?.target.length).toBeGreaterThan(0);
+      expect(imageAlt?.signature).toContain('image-alt');
+      expect(imageAlt?.signature).toContain('|');
+    },
+    30_000,
+  );
 
   it('records axe version, compliance level, and tags in meta', async () => {
     const snapshot = await runScan({
@@ -128,5 +139,57 @@ describe('runScan', () => {
     expect(snapshot.urls[0]?.status).toBe('failed');
     expect(snapshot.urls[0]?.error).toMatch(/timeout/i);
     expect(snapshot.urls[1]?.status).toBe('ok');
+  });
+
+  it(
+    'dismisses a cookie banner before axe when consent selectors match',
+    async () => {
+      const withConsent = await runScan({
+        ...defaultOptions,
+        urls: [`${baseUrl}/cookie-banner.html`],
+        consent: {
+          enabled: true,
+          selectors: ['#onetrust-accept-btn-handler'],
+          timeoutMs: 2_000,
+          settleMs: 0,
+          verbose: false,
+        },
+      });
+
+      expect(withConsent.urls[0]?.status).toBe('ok');
+      expect(withConsent.urls[0]?.violations.some((v) => v.ruleId === 'button-name')).toBe(false);
+
+      const withoutConsent = await runScan({
+        ...defaultOptions,
+        urls: [`${baseUrl}/cookie-banner.html`],
+        consent: {
+          enabled: false,
+          selectors: [],
+          timeoutMs: 2_000,
+          settleMs: 0,
+          verbose: false,
+        },
+      });
+
+      expect(withoutConsent.urls[0]?.status).toBe('ok');
+      expect(withoutConsent.urls[0]?.violations.some((v) => v.ruleId === 'button-name')).toBe(true);
+    },
+    30_000,
+  );
+
+  it('continues the scan when no consent selector matches', async () => {
+    const snapshot = await runScan({
+      ...defaultOptions,
+      urls: [`${baseUrl}/clean.html`],
+      consent: {
+        enabled: true,
+        selectors: ['#does-not-exist-accept'],
+        timeoutMs: 300,
+        settleMs: 0,
+        verbose: false,
+      },
+    });
+
+    expect(snapshot.urls[0]?.status).toBe('ok');
   });
 });

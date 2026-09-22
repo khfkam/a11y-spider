@@ -60,6 +60,42 @@ viewUrlFailures('https://www.example.com/page')
 
 `report.json` now includes a `byUrl` array with the same grouped data for CI dashboards and scripts. Use `getUrlFailures(report, url)` programmatically from `src/report.ts`.
 
+## Cookie / consent banners
+
+Before each axe scan, a11y-spider **best-effort** clicks a common “Accept cookies” button so banners do not pollute results.
+
+- **Fail-soft:** if no button matches, the scan continues (no failed URL).
+- **Edit selectors:** open [`consent-selectors.json`](./consent-selectors.json) and add/reorder entries. Prefer stable IDs / `data-testid` / vendor hooks over generic `Accept` text.
+- **Site-specific extras:** append selectors without editing the shared file:
+
+```bash
+# .env
+CONSENT_EXTRA_SELECTORS=#my-accept-btn,button:has-text("I agree")
+```
+
+| Variable | Default | Purpose |
+| -------- | ------- | ------- |
+| `CONSENT_DISMISS` | `true` | Set `false` to skip consent handling |
+| `CONSENT_SELECTORS_FILE` | `./consent-selectors.json` | Path to the selectors JSON |
+| `CONSENT_DISMISS_TIMEOUT_MS` | `2500` | Click timeout once a button is found |
+| `CONSENT_SETTLE_MS` | `500` | Brief wait after navigation for banners to appear |
+| `CONSENT_EXTRA_SELECTORS` | *(empty)* | Comma-separated Playwright selectors to try after the JSON file |
+
+Example entry in `consent-selectors.json`:
+
+```json
+{
+  "id": "my-site-accept",
+  "vendor": "MySite",
+  "selector": "#cookie-accept",
+  "notes": "Homepage Accept button"
+}
+```
+
+Selectors use [Playwright locator syntax](https://playwright.dev/docs/locators) (CSS, `button:has-text("Accept all")`, `[data-testid="accept-button"]`, etc.).
+
+Shipped presets include OneTrust, Cassie/ITV, Wayfair, Sourcepoint, BBC, Cookiebot, Didomi, plus generic Accept text fallbacks.
+
 ## Configuration
 
 Key settings in `.env` (see `.env.example`):
@@ -72,6 +108,7 @@ Key settings in `.env` (see `.env.example`):
 | `REPORTS_DIR` | `./reports` | Latest HTML/JSON reports |
 | `ALLOW_HTTP` | `false` | Allow `http://` URLs (production should stay HTTPS) |
 | `FAIL_ON` | `new` | Default `--fail-on` mode |
+| `CONSENT_DISMISS` | `true` | Best-effort cookie banner accept before axe |
 
 ## Exit codes
 
@@ -87,6 +124,7 @@ Key settings in `.env` (see `.env.example`):
 - [Technical proposal](./A11y_Spider_Proposal_v2.md)
 - [Agent implementation guide](./AGENTS.md)
 - [Example HTML report](./examples/report-example.html)
+- [Consent selectors](./consent-selectors.json)
 
 ## Development
 
@@ -99,4 +137,4 @@ npm run build
 
 ## Status
 
-**v1.0.0** — production-ready batch scanner with regression tracking. History retention, parallel scans, and consent/bot bypass are deferred to v2.
+**v1.1.0** — production-ready batch scanner with regression tracking and best-effort cookie consent dismiss via `consent-selectors.json`. History retention, parallel scans, and bot/WAF bypass remain deferred.

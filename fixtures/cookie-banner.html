@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fixture — cookie banner</title>
+</head>
+<body>
+  <div id="onetrust-banner-sdk" role="alertdialog" aria-label="Cookie banner">
+    <p>We use cookies.</p>
+    <button id="onetrust-reject-all-handler">Reject All</button>
+    <button id="onetrust-accept-btn-handler">Accept Cookies</button>
+    <!-- Empty button creates a button-name violation until the banner is dismissed -->
+    <button id="cookie-noise-button"></button>
+  </div>
+
+  <main>
+    <h1>Accessible page behind consent</h1>
+    <p>Main content is fine once the banner is gone.</p>
+  </main>
+
+  <script>
+    document.getElementById('onetrust-accept-btn-handler').addEventListener('click', function () {
+      document.getElementById('onetrust-banner-sdk').remove();
+    });
+  </script>
+</body>
+</html>

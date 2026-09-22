@@ -90,6 +90,13 @@ describe('runScanPipeline', () => {
     pageTimeoutMs: 30_000,
     navigationTimeoutMs: 60_000,
     excludeSelectors: [] as string[],
+    consent: {
+      enabled: false,
+      selectors: [] as string[],
+      timeoutMs: 1_000,
+      settleMs: 0,
+      verbose: false,
+    },
     ...overrides,
   });
 
